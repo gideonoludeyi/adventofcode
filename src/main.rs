@@ -1,9 +1,5 @@
 use std::io;
 
-const MAX_RED: i32 = 12;
-const MAX_GREEN: i32 = 13;
-const MAX_BLUE: i32 = 14;
-
 /*
 * example
     Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
@@ -14,26 +10,26 @@ const MAX_BLUE: i32 = 14;
 */
 fn main() -> io::Result<()> {
     let mut buf = String::new();
-    let mut total = 0;
-    let mut nfails = 0;
+    let mut result = 0;
     while io::stdin().read_line(&mut buf)? != 0 {
-        let mut line = buf.split([':', ';', ',']);
-        let game_num = (&line.next().unwrap()[5..]).parse::<i32>().unwrap();
-        total += game_num;
-        for color in line.map(|s| s.trim()) {
+        let line = buf.split([':', ';', ',']);
+
+        let mut min_red = 0;
+        let mut min_green = 0;
+        let mut min_blue = 0;
+        for color in line.skip(1).map(str::trim) {
             let colordef = color.split(' ').collect::<Vec<&str>>();
-            let n = colordef[0].parse::<i32>().unwrap();
-            let clr = colordef[1];
-            if (clr == "red" && n > MAX_RED)
-                || (clr == "green" && n > MAX_GREEN)
-                || (clr == "blue" && n > MAX_BLUE)
-            {
-                nfails += game_num;
-                break;
+            let n = colordef[0].trim().parse::<i32>().unwrap();
+            match colordef[1] {
+                "red" => min_red = std::cmp::max(min_red, n),
+                "green" => min_green = std::cmp::max(min_green, n),
+                "blue" => min_blue = std::cmp::max(min_blue, n),
+                _ => continue,
             }
         }
+        result += min_red * min_green * min_blue;
         buf.clear();
     }
-    println!("{}", total - nfails);
+    println!("{}", result);
     Ok(())
 }
