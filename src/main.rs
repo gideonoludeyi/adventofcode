@@ -1,48 +1,39 @@
 use std::io;
 
-const MAP: [(&str, &str); 9] = [
-    ("one", "1"),
-    ("two", "2"),
-    ("three", "3"),
-    ("four", "4"),
-    ("five", "5"),
-    ("six", "6"),
-    ("seven", "7"),
-    ("eight", "8"),
-    ("nine", "9"),
-];
+const MAX_RED: i32 = 12;
+const MAX_GREEN: i32 = 13;
+const MAX_BLUE: i32 = 14;
 
+/*
+* example
+    Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+    Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+    Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+    Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+    Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
+*/
 fn main() -> io::Result<()> {
     let mut buf = String::new();
-    let mut total: i32 = 0;
+    let mut total = 0;
+    let mut nfails = 0;
     while io::stdin().read_line(&mut buf)? != 0 {
-        let n = buf.len();
-        for i in 0..n {
-            let slice = &buf[i..];
-            let fst = MAP
-                .iter()
-                .find(|(word, digit)| slice.starts_with(word) || slice.starts_with(digit))
-                .and_then(|(_, digit)| digit.parse::<i32>().ok());
-            if let Some(n) = fst {
-                total += n * 10;
+        let mut line = buf.split([':', ';', ',']);
+        let game_num = (&line.next().unwrap()[5..]).parse::<i32>().unwrap();
+        total += game_num;
+        for color in line.map(|s| s.trim()) {
+            let colordef = color.split(' ').collect::<Vec<&str>>();
+            let n = colordef[0].parse::<i32>().unwrap();
+            let clr = colordef[1];
+            if (clr == "red" && n > MAX_RED)
+                || (clr == "green" && n > MAX_GREEN)
+                || (clr == "blue" && n > MAX_BLUE)
+            {
+                nfails += game_num;
                 break;
             }
         }
-
-        for i in 0..n {
-            let slice = &buf[..(n - i)];
-            let lst = MAP
-                .iter()
-                .find(|(word, digit)| slice.ends_with(word) || slice.ends_with(digit))
-                .and_then(|(_, digit)| digit.parse::<i32>().ok());
-            if let Some(n) = lst {
-                total += n;
-                break;
-            }
-        }
-
         buf.clear();
     }
-    println!("{}", total);
+    println!("{}", total - nfails);
     Ok(())
 }
