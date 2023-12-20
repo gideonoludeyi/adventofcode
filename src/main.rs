@@ -1,5 +1,4 @@
 use std::io::{self, BufRead, BufReader};
-use std::collections::HashSet;
 
 fn main() {
     let total = solve(&mut BufReader::new(io::stdin())).unwrap();
@@ -11,15 +10,18 @@ fn solve(reader: &mut dyn BufRead) -> io::Result<i32> {
 
     let (spans, symspans) = get_spans(&grid);
 
-    let mut checked: HashSet<(usize, usize, usize)> = HashSet::new();
     let mut total = 0;
     for (sx, sy) in &symspans {
+        let mut coords = vec![];
         for (x, ys, yf) in &spans {
-            if !checked.contains(&(*x, *ys, *yf)) && is_adjacent((*sx, *sy), (*x, *ys, *yf)) {
-                let num = to_decimal(&grid[*x][*ys..=*yf]);
-                total += num;
-                checked.insert((*x, *ys, *yf));
+            if is_adjacent((*sx, *sy), (*x, *ys, *yf)) {
+                coords.push((*x, *ys, *yf));
             }
+        }
+        if coords.len() == 2 {
+            let (fx, fy0, fy1) = coords[0];
+            let (sx, sy0, sy1) = coords[1];
+            total += to_decimal(&grid[fx][fy0..=fy1]) * to_decimal(&grid[sx][sy0..=sy1])
         }
     }
 
@@ -64,7 +66,7 @@ fn get_spans(grid: &Vec<Vec<char>>) -> (Vec<(usize, usize, usize)>, Vec<(usize, 
                 }
                 spans.push((i, s, e));
                 s = e + 1;
-            } else if grid[i][s] != '.' {
+            } else if grid[i][s] == '*' {
                 symspans.push((i, s));
                 s += 1;
             } else {
@@ -77,7 +79,7 @@ fn get_spans(grid: &Vec<Vec<char>>) -> (Vec<(usize, usize, usize)>, Vec<(usize, 
 
 fn is_adjacent((sx, sy): (usize, usize), (x, ys, yf): (usize, usize, usize)) -> bool {
     let is_nearby_row = sx.abs_diff(x) <= 1;
-    let is_nearby_col = usize::checked_sub(ys, 1).unwrap_or(0) <= sy && sy <= (yf+1);
+    let is_nearby_col = usize::checked_sub(ys, 1).unwrap_or(0) <= sy && sy <= (yf + 1);
     is_nearby_row && is_nearby_col
 }
 
@@ -88,7 +90,8 @@ mod test {
 
     #[test]
     fn test_solve() {
-        let mut r: Cursor<&str> = Cursor::new("\
+        let mut r: Cursor<&str> = Cursor::new(
+            "\
         467..114..
         ...*......
         ..35..633.
@@ -99,8 +102,9 @@ mod test {
         ......755.
         ...$.*....
         .664.598..
-        ");
-        assert_eq!(solve(&mut r).unwrap(), 4361);
+        ",
+        );
+        assert_eq!(solve(&mut r).unwrap(), 467835);
     }
 
     #[test]
