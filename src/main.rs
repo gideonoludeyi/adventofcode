@@ -1,12 +1,16 @@
 use std::io::{self, BufRead, BufReader};
+use std::str::FromStr;
 
 fn main() {
     let solution = solve(&mut BufReader::new(io::stdin())).unwrap();
-    println!("{:?}", solution);
+    println!("{}", solution);
 }
 
 fn solve(reader: &mut dyn BufRead) -> io::Result<i32> {
-    reader.lines().map(|x| x.map(solve_line)).sum()
+    reader
+        .lines()
+        .map(|r: io::Result<String>| r.map(solve_line))
+        .sum()
 }
 
 fn solve_line(line: String) -> i32 {
@@ -14,37 +18,17 @@ fn solve_line(line: String) -> i32 {
     if vec.len() < 2 {
         return 0;
     }
-    let mut winning = vec[0]
-        .trim()
-        .split_ascii_whitespace()
-        .map(str::parse::<u8>)
-        .collect::<Result<Vec<u8>, _>>()
-        .unwrap();
+    let mut winning = parse_whitespace_separated_nums::<u8>(vec[0]).unwrap();
+    let mut received = parse_whitespace_separated_nums::<u8>(vec[1]).unwrap();
     winning.sort();
-    let mut received = vec[1]
-        .trim()
-        .split_ascii_whitespace()
-        .map(str::parse::<u8>)
-        .collect::<Result<Vec<u8>, _>>()
-        .unwrap();
     received.sort();
 
     let mut points = 0_i32;
-    let mut r = 0_usize;
-    let mut w = 0_usize;
-    loop {
-        if r >= received.len() {
-            break;
-        }
-        if w >= winning.len() {
-            break;
-        }
+    let (mut r, mut w) = (0_usize, 0_usize); // pointer indices to elements of `received` and
+                                             // `winning` respectively
+    while r < received.len() && w < winning.len() {
         if received[r] == winning[w] {
-            if points == 0 {
-                points = 1;
-            } else {
-                points *= 2;
-            }
+            points = if points == 0 { 1 } else { points * 2 };
             r += 1;
             w += 1;
         } else if received[r] < winning[w] {
@@ -55,6 +39,13 @@ fn solve_line(line: String) -> i32 {
     }
 
     points
+}
+
+fn parse_whitespace_separated_nums<T: FromStr>(text: &str) -> Result<Vec<T>, T::Err> {
+    text.trim()
+        .split_ascii_whitespace()
+        .map(T::from_str)
+        .collect()
 }
 
 #[cfg(test)]
