@@ -7,10 +7,19 @@ fn main() {
 }
 
 fn solve(reader: &mut dyn BufRead) -> io::Result<i32> {
-    reader
+    let values: Vec<_> = reader
         .lines()
+        .filter(|r| r.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(true))
         .map(|r: io::Result<String>| r.map(solve_line))
-        .sum()
+        .collect::<io::Result<Vec<_>>>()?;
+
+    let mut card_counts: Vec<i32> = vec![1; values.len()];
+    for i in 0..values.len() {
+        for j in (i + 1)..=(i + values[i] as usize) {
+            card_counts[j] += card_counts[i];
+        }
+    }
+    Ok(card_counts.iter().sum())
 }
 
 fn solve_line(line: String) -> i32 {
@@ -23,12 +32,12 @@ fn solve_line(line: String) -> i32 {
     winning.sort();
     received.sort();
 
-    let mut points = 0_i32;
+    let mut wins = 0_i32;
     let (mut r, mut w) = (0_usize, 0_usize); // pointer indices to elements of `received` and
                                              // `winning` respectively
     while r < received.len() && w < winning.len() {
         if received[r] == winning[w] {
-            points = if points == 0 { 1 } else { points * 2 };
+            wins += 1;
             r += 1;
             w += 1;
         } else if received[r] < winning[w] {
@@ -38,7 +47,7 @@ fn solve_line(line: String) -> i32 {
         }
     }
 
-    points
+    wins
 }
 
 fn parse_whitespace_separated_nums<T: FromStr>(text: &str) -> Result<Vec<T>, T::Err> {
@@ -65,6 +74,6 @@ mod test {
             Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
         ",
         );
-        assert_eq!(13, solve(&mut r).unwrap());
+        assert_eq!(30, solve(&mut r).unwrap());
     }
 }
