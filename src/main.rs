@@ -1,86 +1,60 @@
 use std::io::{self, BufRead, BufReader};
 
 fn main() {
-    let total = solve(&mut BufReader::new(io::stdin())).unwrap();
-    println!("{:?}", total);
+    let solution = solve(&mut BufReader::new(io::stdin())).unwrap();
+    println!("{:?}", solution);
 }
 
 fn solve(reader: &mut dyn BufRead) -> io::Result<i32> {
-    let grid = get_grid(reader)?;
+    reader.lines().map(|x| x.map(solve_line)).sum()
+}
 
-    let (spans, symspans) = get_spans(&grid);
+fn solve_line(line: String) -> i32 {
+    let vec = line.split([':', '|']).skip(1).collect::<Vec<&str>>(); // skip "Card n"
+    if vec.len() < 2 {
+        return 0;
+    }
+    let mut winning = vec[0]
+        .trim()
+        .split_ascii_whitespace()
+        .map(str::parse::<u8>)
+        .collect::<Result<Vec<u8>, _>>()
+        .unwrap();
+    winning.sort();
+    let mut received = vec[1]
+        .trim()
+        .split_ascii_whitespace()
+        .map(str::parse::<u8>)
+        .collect::<Result<Vec<u8>, _>>()
+        .unwrap();
+    received.sort();
 
-    let mut total = 0;
-    for (sx, sy) in &symspans {
-        let mut coords = vec![];
-        for (x, ys, yf) in &spans {
-            if is_adjacent((*sx, *sy), (*x, *ys, *yf)) {
-                coords.push((*x, *ys, *yf));
-            }
+    let mut points = 0_i32;
+    let mut r = 0_usize;
+    let mut w = 0_usize;
+    loop {
+        if r >= received.len() {
+            break;
         }
-        if coords.len() == 2 {
-            let (fx, fy0, fy1) = coords[0];
-            let (sx, sy0, sy1) = coords[1];
-            total += to_decimal(&grid[fx][fy0..=fy1]) * to_decimal(&grid[sx][sy0..=sy1])
+        if w >= winning.len() {
+            break;
         }
-    }
-
-    Ok(total)
-}
-
-fn to_decimal(slice: &[char]) -> i32 {
-    let mut num = 0;
-    let len = slice.len();
-    for i in 0..len {
-        num += (slice[i].to_digit(10).unwrap() as i32)
-            * i32::pow(10, (len - i - 1).try_into().unwrap());
-    }
-    num
-}
-
-fn get_grid(reader: &mut dyn BufRead) -> io::Result<Vec<Vec<char>>> {
-    let mut buf = String::new();
-    let mut grid: Vec<Vec<char>> = vec![];
-    while reader.read_line(&mut buf)? != 0 {
-        let row = buf.trim().chars().collect::<Vec<char>>();
-        grid.push(row);
-        buf.clear();
-    }
-    Ok(grid)
-}
-
-fn get_spans(grid: &Vec<Vec<char>>) -> (Vec<(usize, usize, usize)>, Vec<(usize, usize)>) {
-    let mut spans: Vec<(usize, usize, usize)> = vec![];
-    let mut symspans: Vec<(usize, usize)> = vec![];
-    for i in 0..grid.len() {
-        let mut s = 0;
-        let mut e = 0;
-        while s < grid[i].len() {
-            if grid[i][s].is_digit(10) {
-                for j in s..grid[i].len() {
-                    if grid[i][j].is_digit(10) {
-                        e = j;
-                    } else {
-                        break;
-                    }
-                }
-                spans.push((i, s, e));
-                s = e + 1;
-            } else if grid[i][s] == '*' {
-                symspans.push((i, s));
-                s += 1;
+        if received[r] == winning[w] {
+            if points == 0 {
+                points = 1;
             } else {
-                s += 1;
+                points *= 2;
             }
+            r += 1;
+            w += 1;
+        } else if received[r] < winning[w] {
+            r += 1;
+        } else {
+            w += 1;
         }
     }
-    (spans, symspans)
-}
 
-fn is_adjacent((sx, sy): (usize, usize), (x, ys, yf): (usize, usize, usize)) -> bool {
-    let is_nearby_row = sx.abs_diff(x) <= 1;
-    let is_nearby_col = usize::checked_sub(ys, 1).unwrap_or(0) <= sy && sy <= (yf + 1);
-    is_nearby_row && is_nearby_col
+    points
 }
 
 #[cfg(test)]
@@ -92,29 +66,14 @@ mod test {
     fn test_solve() {
         let mut r: Cursor<&str> = Cursor::new(
             "\
-        467..114..
-        ...*......
-        ..35..633.
-        ......#...
-        617*......
-        .....+.58.
-        ..592.....
-        ......755.
-        ...$.*....
-        .664.598..
+            Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+            Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+            Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+            Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+            Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+            Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
         ",
         );
-        assert_eq!(solve(&mut r).unwrap(), 467835);
-    }
-
-    #[test]
-    fn test_is_adjacent() {
-        let span = (0_usize, 0_usize, 2_usize);
-        let symspan = (1_usize, 3_usize);
-        assert!(is_adjacent(symspan, span));
-
-        let span = (7_usize, 6_usize, 8_usize);
-        let symspan = (8_usize, 5_usize);
-        assert!(is_adjacent(symspan, span));
+        assert_eq!(13, solve(&mut r).unwrap());
     }
 }
